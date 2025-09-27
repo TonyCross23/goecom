@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/TonyCross23/goecom/service/auth"
 	"github.com/TonyCross23/goecom/types"
 	"github.com/TonyCross23/goecom/utils"
 	"github.com/gorilla/mux"
@@ -42,11 +43,18 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// hash password
+	hashedPassword, err := auth.HashPassword(user.Password)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
 	err = h.store.CreateUser(types.User{
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Email:     user.Email,
-		Password:  user.Password,
+		Password:  hashedPassword,
 	})
 
 	if err != nil {
