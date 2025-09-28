@@ -7,6 +7,7 @@ import (
 	"github.com/TonyCross23/goecom/service/auth"
 	"github.com/TonyCross23/goecom/types"
 	"github.com/TonyCross23/goecom/utils"
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 )
 
@@ -36,9 +37,16 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// validate the payload
+	if err := utils.Validate.Struct(user); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload: %v", errors))
+		return
+	}
+
 	// check if user with email already exists
 	_, err := h.store.GetUserByEmail(user.Email)
-	if err != nil {
+	if err == nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user with email %s already exists", user.Email))
 		return
 	}
