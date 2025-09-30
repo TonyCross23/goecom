@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/TonyCross23/goecom/config"
 	"github.com/TonyCross23/goecom/service/auth"
 	"github.com/TonyCross23/goecom/types"
 	"github.com/TonyCross23/goecom/utils"
@@ -25,6 +26,41 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	// get josn payload from request body
+	var user types.LoginUserPayload
+
+	if err := utils.ParseJSON(r, &user); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// validation the payload
+	if err := utils.Validate.Struct(user); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", errors))
+		return
+	}
+
+	// check if user with eamil already exists
+	u, err := h.store.GetUserByEmail(user.Email)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, fmt.Errorf("invalid email or password"))
+		return
+	}
+
+	if !auth.ComparePasswor(u.Password, []byte(user.Password)) {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid email or password"))
+		return
+	}
+
+	secret := []byte(config.Envs.JWTSecret)
+	token, err := auth.CreateJWT(secret, u.ID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 
 }
 
